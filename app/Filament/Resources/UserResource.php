@@ -3,22 +3,33 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Filament\Resources\UserResource\Pages\CreateUser;
+use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Filament\Resources\UserResource\RelationManagers;
+use App\Filament\Resources\UserResource\RelationManagers\RolesRelationManager;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Pages\Page;
 use Filament\Resources\Form;
 use Filament\Resources\Resource;
 use Filament\Resources\Table;
 use Filament\Tables;
+use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-collection';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    protected static ?string $navigationGroup = 'Admin Management';
+
+    // protected static bool $shouldRegisterNavigation = false;
+
 
     public static function form(Form $form): Form
     {
@@ -36,8 +47,19 @@ class UserResource extends Resource
                 // Forms\Components\DateTimePicker::make('email_verified_at'),
                 Forms\Components\TextInput::make('password')
                     ->password()
-                    ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->dehydrateStateUsing(
+                        static fn (null|string $state): null|string =>
+                        filled($state) ? Hash::make($state) : null,
+                    )->required(
+                        static fn (Page $livewire): bool =>
+                        $livewire instanceof CreateUser,
+                    )->dehydrated(
+                        static fn (null|string $state): bool =>
+                        filled($state),
+                    )->label(
+                        static fn (Page $livewire): string => ($livewire instanceof EditUser) ? 'New Password' : 'Password'
+                    ),
                 // Forms\Components\Textarea::make('two_factor_secret')
                 //     ->maxLength(65535),
                 // Forms\Components\Textarea::make('two_factor_recovery_codes')
@@ -85,7 +107,7 @@ class UserResource extends Resource
                 //     ->dateTime(),
             ])
             ->filters([
-                //
+                TrashedFilter::make(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -99,7 +121,7 @@ class UserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RolesRelationManager::class,
         ];
     }
 
